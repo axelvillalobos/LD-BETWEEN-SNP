@@ -1,0 +1,58 @@
+#compute LD between  SNPs
+
+#Clear worksplace
+
+rm(list = ls())
+
+#Set working directory
+
+setwd("D:/plink/linkage")
+#load packages
+library(tidyverse)
+
+# QUALITY CONTROL
+#Select one chromosome
+system("plink --vcf creole.vcf --cow --autosome --mind 0.1 --geno 0.1 --maf 0.05 --hwe 0.0000001  --make-bed --out criolloQC")
+
+#example run
+
+system("plink --bfile criolloQC --cow --r2 --ld-window 1000 --ld-window-kb 1000 --ld-window-r2 0 --out LDexample")
+
+#Read in LD result file
+
+
+LdValues <- read_table("LdExample.ld")
+
+#Calculate LD 50 kb bins to display the trendline
+
+averageLD <- LdValues %>% 
+  mutate(markerDistance = abs(BP_B -BP_A)/1000) %>%
+  dplyr::filter(markerDistance < 5000) %>%
+  mutate(intervals = cut_width(markerDistance, 20, boundary = 0)) %>%
+  group_by(intervals) %>%
+  summarise_at(vars(R2), funs(mean(., na.rm =TRUE))) %>%
+  rename(averageR2 = R2)
+
+#Calculate inter marker distances
+fullLD <- LdValues %>%
+  mutate(markerDistance = abs(BP_B - BP_A)/1000) %>%
+  dplyr::filter(markerDistance < 5000) %>%
+  mutate(intervals = cut_width(markerDistance, 20, boundary = 0))
+
+#merge the two data sets (full LD info and average per bin)
+
+mergeLD <- full_join(fullLD, averageLD, by = "intervals")
+
+#visualize LD decay
+ggplot(mergeLD) +
+  geom_point(aes(x= markerDistance, y=R2)) +
+  geom_line(aes(x=markerDistance, y=averageR2), color = "blue" , size =2)
+
+#LD pruning -remove SNPs with high LD with each other (remove one of each pair)
+
+#replace --nonfounders with make founders!
+system("plink --bfile criolloQC --cow --make-founders --indep-pairwise 50 5 0.7 --out criolloQC")
+
+# keep only selected markers for your data
+
+system("plink --bfile criolloQC --cow --exclude criolloQC.prune.out --make-bed --out prunedSet")
