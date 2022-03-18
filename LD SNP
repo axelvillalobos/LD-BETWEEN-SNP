@@ -12,7 +12,7 @@ library(tidyverse)
 
 # QUALITY CONTROL
 #Select one chromosome
-system("plink --vcf creole.vcf --cow --autosome --mind 0.1 --geno 0.1 --maf 0.05 --hwe 0.0000001  --make-bed --out criolloQC")
+system("plink --vcf creole.vcf --cow -- --chr 6 --autosome --mind 0.1 --geno 0.1 --maf 0.05 --hwe 0.0000001  --make-bed --out criolloQC")
 
 #example run
 
